@@ -41,6 +41,7 @@ export function ExpensesPagination({
               if (page > 1) onPageChange(page - 1);
             }}
             aria-disabled={page <= 1}
+            tabIndex={page <= 1 ? -1 : undefined}
             className={page <= 1 ? 'pointer-events-none opacity-50' : undefined}
           />
         </PaginationItem>
@@ -74,6 +75,7 @@ export function ExpensesPagination({
               if (page < totalPages) onPageChange(page + 1);
             }}
             aria-disabled={page >= totalPages}
+            tabIndex={page >= totalPages ? -1 : undefined}
             className={page >= totalPages ? 'pointer-events-none opacity-50' : undefined}
           />
         </PaginationItem>

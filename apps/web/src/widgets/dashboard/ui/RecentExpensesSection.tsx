@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { Category, PaginatedResponse, Expense } from '@expense-tracker/types';
-import { expensesApi, categoriesApi, ExpensesTable, ExpensesPagination } from '@/features/expenses';
+import type { Expense, PaginatedResponse } from '@/entities/expense';
+import type { Category } from '@/entities/category';
+import { expensesApi, ExpensesTable, ExpensesPagination } from '@/features/expenses';
+import { categoriesApi } from '@/features/categories';
 import { ApiError } from '@/shared/api/errors';
 
 const PAGE_SIZE = 10;
@@ -15,19 +17,34 @@ export function RecentExpensesSection() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    categoriesApi.list().then(setCategories).catch(() => null);
+    const abort = new AbortController();
+    categoriesApi
+      .list(abort.signal)
+      .then(setCategories)
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
+        console.error('Ошибка загрузки категорий:', error);
+        toast.error('Ошибка загрузки категорий');
+      });
+    return () => abort.abort();
   }, []);
 
   useEffect(() => {
+    const abort = new AbortController();
     setLoading(true);
     expensesApi
-      .list({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
-      .then(setData)
-      .catch((error) => {
+      .list({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }, abort.signal)
+      .then((res) => {
+        setData(res);
+        setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === 'AbortError') return;
         const message = error instanceof ApiError ? error.message : 'Ошибка загрузки транзакций';
         toast.error(message);
-      })
-      .finally(() => setLoading(false));
+        setLoading(false);
+      });
+    return () => abort.abort();
   }, [page]);
 
   return (

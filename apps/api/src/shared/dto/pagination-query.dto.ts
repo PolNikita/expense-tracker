@@ -13,5 +13,6 @@ export class PaginationQueryDto {
   @Transform(({ value }) => Number(value))
   @IsInt()
   @Min(0)
+  @Max(100_000)
   offset: number = 0;
 }

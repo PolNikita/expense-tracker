@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import type { Category } from '@expense-tracker/types';
-import { categoriesApi } from '@/features/expenses/api/categories-api';
+import type { Category } from '@/entities/category';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/shared/ui/form';
 import { Input } from '@/shared/ui/input';
 import { Textarea } from '@/shared/ui/textarea';
@@ -16,13 +14,12 @@ import {
 } from '@/shared/ui/select';
 import type { ExpenseFormValues } from '../model/schema';
 
-export function ExpenseFormFields() {
-  const form = useFormContext<ExpenseFormValues>();
-  const [categories, setCategories] = useState<Category[]>([]);
+interface ExpenseFormFieldsProps {
+  categories: Category[];
+}
 
-  useEffect(() => {
-    categoriesApi.list().then(setCategories).catch(() => {});
-  }, []);
+export function ExpenseFormFields({ categories }: ExpenseFormFieldsProps) {
+  const form = useFormContext<ExpenseFormValues>();
 
   return (
     <div className="space-y-4">

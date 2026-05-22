@@ -43,7 +43,7 @@ async function request<TResponse>(
 }
 
 export const http = {
-  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  get: <T>(path: string, signal?: AbortSignal) => request<T>(path, { method: 'GET', signal }),
 
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {

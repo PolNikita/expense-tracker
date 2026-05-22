@@ -109,6 +109,7 @@ export function ExpensesTable({ expenses, categories, onUpdate, onDelete }: Expe
       {onUpdate && (
         <EditExpenseDialog
           expense={editTarget}
+          categories={categories}
           onClose={() => setEditTarget(null)}
           onSuccess={(updated) => {
             setEditTarget(null);
