@@ -36,3 +36,6 @@ apps/api/prisma/migrations/dev.db*
 # turbo / cache
 .turbo
 .cache
+
+# claude code transient planning artifacts
+.claude/plans/
