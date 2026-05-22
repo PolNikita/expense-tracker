@@ -1,0 +1,17 @@
+{
+  "name": "@expense-tracker/eslint-config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "base.cjs",
+  "files": [
+    "base.cjs",
+    "nextjs.cjs",
+    "nestjs.cjs"
+  ],
+  "dependencies": {
+    "eslint-config-prettier": "^9.1.0"
+  },
+  "peerDependencies": {
+    "eslint": "^8.57.0"
+  }
+}

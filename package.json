@@ -1,0 +1,20 @@
+{
+  "name": "expense-tracker",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @expense-tracker/web dev",
+    "dev:api": "pnpm --filter @expense-tracker/api start:dev",
+    "build:web": "pnpm --filter @expense-tracker/web build",
+    "build:api": "pnpm --filter @expense-tracker/api build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres"
+  }
+}
