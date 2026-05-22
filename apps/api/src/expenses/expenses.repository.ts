@@ -43,7 +43,9 @@ export class ExpensesRepository {
     const [items, total] = await this.prisma.$transaction([
       this.prisma.expense.findMany({
         where,
-        orderBy: { spentAt: 'desc' },
+        // Tie-breaker по id: при одинаковом spentAt сортировка должна быть
+        // детерминирована, иначе offset-пагинация может пропускать/задваивать строки.
+        orderBy: [{ spentAt: 'desc' }, { id: 'desc' }],
         take: limit,
         skip: offset,
       }),
