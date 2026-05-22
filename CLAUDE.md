@@ -104,7 +104,7 @@ app  →  widgets  →  features  →  entities  →  shared
 
 ## Conventions
 
-- Russian is the primary collaboration language with the user; code, comments in code, and English-facing artifacts (PR titles, commit messages) stay in English.
+- Russian is the primary collaboration language with the user; code and comments in code stay in English. Commit subjects/bodies — на русском (см. "Git commit conventions" ниже). PR titles стараемся держать на английском для совместимости с GitHub UI.
 - Don't install dependencies or run migrations unless the user asks.
 - **Frontend UI**: new shadcn/ui components go into `src/shared/ui/` via the shadcn CLI (`pnpm dlx shadcn@latest add <component>`). Never duplicate shadcn components inside features — compose from `shared/ui`.
 - **FSD imports**: each slice exports its public API through `index.ts`. Cross-slice imports must go through `index.ts`, not into internals. A lower layer must never import from a higher layer.
@@ -112,16 +112,16 @@ app  →  widgets  →  features  →  entities  →  shared
 
 ## Git commit conventions
 
-Follow **Conventional Commits 1.0.0**. Commit messages are in English regardless of conversation language.
+Follow **Conventional Commits 1.0.0**. Subject and body — на русском, кратко (тип, область, маркеры и футеры остаются английскими токенами, как требует спецификация).
 
 **Format**
 
 ```
-<type>(<scope>): <subject>
+<type>(<scope>): краткое описание на русском
 
-[optional body]
+[опциональное тело — зачем меняли, нюансы]
 
-[optional footer(s)]
+[опциональные футеры]
 ```
 
 **Allowed types**
@@ -153,24 +153,24 @@ Use a single scope; if a change genuinely spans many areas (e.g. introducing a c
 
 **Subject**
 
-- imperative mood (`add`, `fix`, `remove`), not past tense
-- lowercase first letter, no trailing period
-- ≤ 72 characters
-- describes the *what*, not the *how*
+- на русском, кратко, инфинитив (`добавить`, `исправить`, `удалить`) — зеркалит английский imperative
+- с маленькой буквы, без точки в конце
+- ≤ 72 символов
+- описывает *что*, а не *как*
 
 **Body** (optional but encouraged for non-trivial changes)
 
-- wrap at ~100 characters
-- explain *why* the change is needed and any non-obvious trade-offs
-- reference related issues/PRs in the footer (`Refs: #123`, `Closes: #123`)
+- на русском, перенос строки ~100 символов
+- объясняет *зачем* и неочевидные trade-offs
+- ссылки на задачи/PR — в футере (`Refs: #123`, `Closes: #123`)
 
 **Breaking changes**
 
-Mark with `!` after the type/scope (`feat(api)!: ...`) **and** add a `BREAKING CHANGE:` footer describing the migration.
+Помечай `!` после type/scope (`feat(api)!: ...`) **и** добавляй футер `BREAKING CHANGE:` с описанием миграции (на русском).
 
 **AI-assisted commits**
 
-When a commit is co-authored with Claude Code, add the trailer:
+Если коммит сделан вместе с Claude Code, добавляй трейлер:
 
 ```
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
@@ -179,17 +179,17 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 **Examples**
 
 ```
-feat(api): add categories CRUD with CQRS handlers
-fix(web): prevent auth flash by waiting for zustand hydration
-refactor(api): extract Prisma into a global @Global() module
-docs: document host toolchain quirks in CLAUDE.md
-build(deps): bump next from 14.2.3 to 14.2.5
-chore(repo): initialize git repository
-feat(api)!: switch JWT payload from { sub } to { userId }
+feat(api): добавить CRUD категорий через CQRS-обработчики
+fix(web): убрать мигание авторизации до гидратации zustand
+refactor(api): вынести Prisma в глобальный @Global() модуль
+docs: описать особенности окружения в CLAUDE.md
+build(deps): обновить next с 14.2.3 до 14.2.5
+chore(repo): инициализировать git-репозиторий
+feat(api)!: сменить payload JWT с { sub } на { userId }
 
-BREAKING CHANGE: clients must read `userId` instead of `sub` from the decoded token.
+BREAKING CHANGE: клиенты должны читать `userId` вместо `sub` из декодированного токена.
 ```
 
 **Atomicity**
 
-One logical change per commit. If you touch both `apps/api` and `apps/web` for one feature, that's fine — one commit, omit the scope or pick the dominant one. But don't bundle unrelated fixes with a feature; split them.
+Один логический change — один коммит. Если фича задевает и `apps/api`, и `apps/web` — окей, один коммит, опусти scope или возьми доминирующий. Но не смешивай несвязанные правки с фичей; разделяй.
