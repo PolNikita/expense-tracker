@@ -1,5 +1,5 @@
 import type { Expense as PrismaExpense } from '@prisma/client';
-import type { Expense } from '@expense-tracker/types';
+import type { Expense, PaginatedResponse } from '@expense-tracker/types';
 
 export function toExpenseDto(row: PrismaExpense): Expense {
   return {
@@ -11,5 +11,20 @@ export function toExpenseDto(row: PrismaExpense): Expense {
     spentAt: row.spentAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+export function toPaginatedExpenses(
+  { items, total }: { items: PrismaExpense[]; total: number },
+  { limit, offset }: { limit: number; offset: number },
+): PaginatedResponse<Expense> {
+  return {
+    items: items.map(toExpenseDto),
+    meta: {
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    },
   };
 }

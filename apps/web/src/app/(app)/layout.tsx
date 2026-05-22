@@ -11,6 +11,7 @@ import { cn } from '@/shared/lib/utils';
 const navItems = [
   { href: '/dashboard', label: 'Главная' },
   { href: '/expenses', label: 'Расходы' },
+  { href: '/categories', label: 'Категории' },
 ];
 
 function AppTopbar() {

@@ -1,5 +1,17 @@
 export type ISODateString = string;
 
+export interface PaginationMeta {
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  meta: PaginationMeta;
+}
+
 export interface Category {
   id: string;
   name: string;

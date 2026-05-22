@@ -8,14 +8,16 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
-import { Expense, User } from '@expense-tracker/types';
+import { Expense, PaginatedResponse, User } from '@expense-tracker/types';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { PaginationQueryDto } from '../shared/dto/pagination-query.dto';
 
 @Controller('expenses')
 @UseGuards(JwtAuthGuard)
@@ -29,8 +31,11 @@ export class ExpensesController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: User): Promise<Expense[]> {
-    return this.expenses.findAll(user.id);
+  findAll(
+    @CurrentUser() user: User,
+    @Query() pagination: PaginationQueryDto,
+  ): Promise<PaginatedResponse<Expense>> {
+    return this.expenses.findAll(user.id, pagination);
   }
 
   @Get(':id')

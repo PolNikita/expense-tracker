@@ -5,11 +5,14 @@ import { GetExpensesByUserQuery } from '../get-expenses-by-user.query';
 
 @QueryHandler(GetExpensesByUserQuery)
 export class GetExpensesByUserHandler
-  implements IQueryHandler<GetExpensesByUserQuery, Expense[]>
+  implements IQueryHandler<GetExpensesByUserQuery, { items: Expense[]; total: number }>
 {
   constructor(private readonly repo: ExpensesRepository) {}
 
-  execute(query: GetExpensesByUserQuery): Promise<Expense[]> {
-    return this.repo.findAllByUser(query.userId);
+  execute(query: GetExpensesByUserQuery): Promise<{ items: Expense[]; total: number }> {
+    return this.repo.findAllByUser(query.userId, {
+      limit: query.limit,
+      offset: query.offset,
+    });
   }
 }

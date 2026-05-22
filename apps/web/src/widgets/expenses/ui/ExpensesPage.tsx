@@ -2,44 +2,49 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { Category, Expense } from '@expense-tracker/types';
-import { expensesApi } from '@/features/expenses/api/expenses-api';
-import { categoriesApi } from '@/features/expenses/api/categories-api';
-import { CreateExpenseDialog, ExpensesTable } from '@/features/expenses';
+import type { Category, PaginatedResponse, Expense } from '@expense-tracker/types';
+import { expensesApi, categoriesApi } from '@/features/expenses';
+import { CreateExpenseDialog, ExpensesTable, ExpensesPagination } from '@/features/expenses';
 import { ApiError } from '@/shared/api/errors';
 
+const PAGE_SIZE = 10;
+
 export function ExpensesPage() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [page, setPage] = useState(1);
+  const [tick, setTick] = useState(0);
+  const [data, setData] = useState<PaginatedResponse<Expense> | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
-    try {
-      const [exp, cats] = await Promise.all([expensesApi.list(), categoriesApi.list()]);
-      setExpenses(exp);
-      setCategories(cats);
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : 'Ошибка загрузки';
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void load();
+    categoriesApi.list().then(setCategories).catch(() => null);
   }, []);
 
-  function handleCreate(expense: Expense) {
-    setExpenses((prev) => [expense, ...prev]);
+  useEffect(() => {
+    setLoading(true);
+    expensesApi
+      .list({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE })
+      .then(setData)
+      .catch((error) => {
+        const message = error instanceof ApiError ? error.message : 'Ошибка загрузки';
+        toast.error(message);
+      })
+      .finally(() => setLoading(false));
+  }, [page, tick]);
+
+  function refetch() {
+    setTick((t) => t + 1);
   }
 
-  function handleUpdate(updated: Expense) {
-    setExpenses((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+  function handleCreate() {
+    if (page === 1) refetch();
+    else setPage(1);
   }
 
-  function handleDelete(id: string) {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
+  function handleDelete() {
+    const itemsOnPage = data?.items.length ?? 0;
+    if (itemsOnPage === 1 && page > 1) setPage((p) => p - 1);
+    else refetch();
   }
 
   return (
@@ -52,12 +57,22 @@ export function ExpensesPage() {
       {loading ? (
         <p className="py-12 text-center text-sm text-muted-foreground">Загрузка...</p>
       ) : (
-        <ExpensesTable
-          expenses={expenses}
-          categories={categories}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-        />
+        <>
+          <ExpensesTable
+            expenses={data?.items ?? []}
+            categories={categories}
+            onUpdate={refetch}
+            onDelete={handleDelete}
+          />
+          {data && (
+            <ExpensesPagination
+              page={page}
+              pageSize={PAGE_SIZE}
+              total={data.meta.total}
+              onPageChange={setPage}
+            />
+          )}
+        </>
       )}
     </div>
   );
