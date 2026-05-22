@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import type { Expense, PaginatedResponse } from '@/entities/expense';
+import type { PaginatedResponse } from '@expense-tracker/types';
+import type { Expense } from '@/entities/expense';
 import type { Category } from '@/entities/category';
 import { expensesApi, CreateExpenseDialog, ExpensesTable, ExpensesPagination } from '@/features/expenses';
 import { categoriesApi } from '@/features/categories';
