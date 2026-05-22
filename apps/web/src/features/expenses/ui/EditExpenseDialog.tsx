@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Expense } from '@expense-tracker/types';
+import type { Category } from '@/entities/category';
 import { expensesApi } from '@/features/expenses/api/expenses-api';
 import { ExpenseFormSchema, type ExpenseFormValues } from '../model/schema';
 import { ExpenseFormFields } from './ExpenseFormFields';
@@ -20,6 +21,7 @@ import { ApiError } from '@/shared/api/errors';
 
 interface EditExpenseDialogProps {
   expense: Expense | null;
+  categories: Category[];
   onClose: () => void;
   onSuccess: (expense: Expense) => void;
 }
@@ -30,7 +32,7 @@ function toLocalDatetime(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function EditExpenseDialog({ expense, onClose, onSuccess }: EditExpenseDialogProps) {
+export function EditExpenseDialog({ expense, categories, onClose, onSuccess }: EditExpenseDialogProps) {
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(ExpenseFormSchema),
     defaultValues: {
@@ -83,7 +85,7 @@ export function EditExpenseDialog({ expense, onClose, onSuccess }: EditExpenseDi
         </DialogHeader>
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <ExpenseFormFields />
+            <ExpenseFormFields categories={categories} />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Сохранить

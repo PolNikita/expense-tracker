@@ -17,8 +17,8 @@ import { DeleteExpenseDialog } from './DeleteExpenseDialog';
 interface ExpensesTableProps {
   expenses: Expense[];
   categories: Category[];
-  onUpdate: (expense: Expense) => void;
-  onDelete: (id: string) => void;
+  onUpdate?: (expense: Expense) => void;
+  onDelete?: (id: string) => void;
 }
 
 function formatAmount(amount: string, currency: string): string {
@@ -38,6 +38,7 @@ function formatDate(iso: string): string {
 export function ExpensesTable({ expenses, categories, onUpdate, onDelete }: ExpensesTableProps) {
   const [editTarget, setEditTarget] = useState<Expense | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
+  const hasActions = onUpdate !== undefined || onDelete !== undefined;
 
   const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
@@ -58,7 +59,7 @@ export function ExpensesTable({ expenses, categories, onUpdate, onDelete }: Expe
             <TableHead>Категория</TableHead>
             <TableHead className="text-right">Сумма</TableHead>
             <TableHead>Заметка</TableHead>
-            <TableHead className="w-[120px]" />
+            {hasActions && <TableHead className="w-[120px]" />}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,46 +77,57 @@ export function ExpensesTable({ expenses, categories, onUpdate, onDelete }: Expe
               <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
                 {expense.note ?? '—'}
               </TableCell>
-              <TableCell>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setEditTarget(expense)}
-                  >
-                    Изменить
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => setDeleteTarget(expense)}
-                  >
-                    Удалить
-                  </Button>
-                </div>
-              </TableCell>
+              {hasActions && (
+                <TableCell>
+                  <div className="flex gap-2 justify-end">
+                    {onUpdate && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setEditTarget(expense)}
+                      >
+                        Изменить
+                      </Button>
+                    )}
+                    {onDelete && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setDeleteTarget(expense)}
+                      >
+                        Удалить
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>
       </Table>
 
-      <EditExpenseDialog
-        expense={editTarget}
-        onClose={() => setEditTarget(null)}
-        onSuccess={(updated) => {
-          setEditTarget(null);
-          onUpdate(updated);
-        }}
-      />
+      {onUpdate && (
+        <EditExpenseDialog
+          expense={editTarget}
+          categories={categories}
+          onClose={() => setEditTarget(null)}
+          onSuccess={(updated) => {
+            setEditTarget(null);
+            onUpdate(updated);
+          }}
+        />
+      )}
 
-      <DeleteExpenseDialog
-        expense={deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onSuccess={(id) => {
-          setDeleteTarget(null);
-          onDelete(id);
-        }}
-      />
+      {onDelete && (
+        <DeleteExpenseDialog
+          expense={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onSuccess={(id) => {
+            setDeleteTarget(null);
+            onDelete(id);
+          }}
+        />
+      )}
     </>
   );
 }

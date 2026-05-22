@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Expense } from '@expense-tracker/types';
+import type { Category } from '@/entities/category';
 import { expensesApi } from '@/features/expenses/api/expenses-api';
 import { ExpenseFormSchema, type ExpenseFormValues } from '../model/schema';
 import { ExpenseFormFields } from './ExpenseFormFields';
@@ -20,10 +21,11 @@ import {
 import { ApiError } from '@/shared/api/errors';
 
 interface CreateExpenseDialogProps {
+  categories: Category[];
   onSuccess: (expense: Expense) => void;
 }
 
-export function CreateExpenseDialog({ onSuccess }: CreateExpenseDialogProps) {
+export function CreateExpenseDialog({ categories, onSuccess }: CreateExpenseDialogProps) {
   const [open, setOpen] = useState(false);
 
   const form = useForm<ExpenseFormValues>({
@@ -72,7 +74,7 @@ export function CreateExpenseDialog({ onSuccess }: CreateExpenseDialogProps) {
         </DialogHeader>
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <ExpenseFormFields />
+            <ExpenseFormFields categories={categories} />
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Сохранить

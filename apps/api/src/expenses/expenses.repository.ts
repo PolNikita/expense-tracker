@@ -35,11 +35,21 @@ export class ExpensesRepository {
     });
   }
 
-  findAllByUser(userId: string): Promise<Expense[]> {
-    return this.prisma.expense.findMany({
-      where: { category: { userId } },
-      orderBy: { spentAt: 'desc' },
-    });
+  async findAllByUser(
+    userId: string,
+    { limit, offset }: { limit: number; offset: number },
+  ): Promise<{ items: Expense[]; total: number }> {
+    const where = { category: { userId } };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.expense.findMany({
+        where,
+        orderBy: { spentAt: 'desc' },
+        take: limit,
+        skip: offset,
+      }),
+      this.prisma.expense.count({ where }),
+    ]);
+    return { items, total };
   }
 
   findOneByUser(id: string, userId: string): Promise<Expense | null> {
