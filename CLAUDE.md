@@ -193,3 +193,50 @@ BREAKING CHANGE: клиенты должны читать `userId` вместо 
 **Atomicity**
 
 Один логический change — один коммит. Если фича задевает и `apps/api`, и `apps/web` — окей, один коммит, опусти scope или возьми доминирующий. Но не смешивай несвязанные правки с фичей; разделяй.
+
+## Branching (GitHub Flow)
+
+Работаем по **GitHub Flow**: одна долгоживущая ветка `main`, всё остальное — короткоживущие feature-ветки от свежего `main`, мерж обратно через PR.
+
+**Базовые правила**
+
+- `main` всегда deployable: проходит `pnpm lint`, `pnpm typecheck`, `pnpm build:*`. Сломанный `main` чинится в первую очередь.
+- Никаких прямых push в `main` (кроме bootstrap-коммитов на старте проекта). Любое изменение приходит PR-ом.
+- Ветку создаём от актуального `main` (`git switch main && git pull --ff-only`), не от другой feature-ветки.
+- Feature-ветка короткоживущая: цель — открыть PR в течение пары дней. Если работа разрастается, режем на несколько PR.
+- Force push разрешён **только** на свои feature-ветки (например, `git push --force-with-lease` после rebase). На `main` — никогда.
+
+**Naming**
+
+Формат: `<type>/<kebab-case-описание>`, где `<type>` — те же типы, что и в commit conventions:
+
+- `feat/<...>` — новая фича (`feat/main-screen`, `feat/expenses-filters`)
+- `fix/<...>` — bugfix (`fix/auth-flash`)
+- `refactor/<...>` — рефакторинг без изменения поведения
+- `docs/<...>` — только документация
+- `chore/<...>` — repo-плюмбинг, конфиги
+- `ci/<...>` — пайплайны
+- `test/<...>` — тесты
+- `hotfix/<...>` — срочный фикс прода
+
+Описание — kebab-case, ASCII, без транслита русского. До 40 символов, передаёт суть, не Jira-ID. Если есть Jira/issue — добавь номер в конце: `feat/main-screen-EXP-42`.
+
+**Lifecycle**
+
+1. `git switch main && git pull --ff-only`
+2. `git switch -c feat/<slug>`
+3. Коммитим маленькими атомарными коммитами (см. Git commit conventions).
+4. Регулярно подтягиваем `main`: `git fetch && git rebase origin/main` (предпочтительно rebase, чтобы история ветки оставалась линейной).
+5. `git push -u origin feat/<slug>`, открываем PR в `main`.
+6. После апрува — **squash merge** в `main`. Сообщение squash-коммита тоже следует Conventional Commits (на русском).
+7. Удаляем ветку после мержа (`git branch -d feat/<slug>` локально, кнопкой в GitHub — на remote).
+
+**PR**
+
+- Заголовок PR — на английском, по Conventional Commits (`feat(web): add main screen`). Это попадёт в squash-сообщение, его можно отредактировать перед мержем.
+- Тело PR — на русском: что сделали, зачем, как тестировать, скриншоты для UI.
+- Один PR — одна логически связанная задача. Не «PR на неделю работы».
+
+**Hotfix**
+
+Срочный фикс прода: `hotfix/<slug>` от `main`, минимальный diff, ускоренный ревью, squash в `main`. Без побочных рефакторингов.
