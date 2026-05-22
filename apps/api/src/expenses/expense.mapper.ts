@@ -14,12 +14,16 @@ export function toExpenseDto(row: PrismaExpense): Expense {
   };
 }
 
+/**
+ * Оборачивает уже смаппленные DTO в страничный ответ. Маппинг row → DTO
+ * делается раньше (в query handler), здесь только meta-обёртка.
+ */
 export function toPaginatedExpenses(
-  { items, total }: { items: PrismaExpense[]; total: number },
+  { items, total }: { items: Expense[]; total: number },
   { limit, offset }: { limit: number; offset: number },
 ): PaginatedResponse<Expense> {
   return {
-    items: items.map(toExpenseDto),
+    items,
     meta: {
       total,
       limit,

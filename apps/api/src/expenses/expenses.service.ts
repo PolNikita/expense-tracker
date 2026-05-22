@@ -36,7 +36,7 @@ export class ExpensesService {
   async findAll(userId: string, pagination: PaginationQueryDto): Promise<PaginatedResponse<Expense>> {
     const result = await this.queryBus.execute<
       GetExpensesByUserQuery,
-      { items: PrismaExpense[]; total: number }
+      { items: Expense[]; total: number }
     >(new GetExpensesByUserQuery(userId, pagination.limit, pagination.offset));
     return toPaginatedExpenses(result, pagination);
   }
