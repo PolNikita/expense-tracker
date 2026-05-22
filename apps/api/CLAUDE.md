@@ -2,6 +2,8 @@
 
 Workspace-specific guidance for the Nest.js backend. Root [`CLAUDE.md`](../../CLAUDE.md) covers repo-wide conventions (toolchain, monorepo, commits, branching) — read it first.
 
+Правила, проверяемые при PR-ревью (CQRS-слои, ownership, pagination tie-breaker, Prisma error mapping, JWT и т.п.), — в корневом [`REVIEW.md`](../../REVIEW.md), секция «3. Backend (`apps/api`)». Этот файл — архитектурный справочник по бэку: где что лежит, как устроены ключевые узлы, как добавить новый ресурс.
+
 ## Workspace layout
 
 ```
@@ -52,93 +54,74 @@ pnpm --filter @expense-tracker/api prisma:studio
 | `JWT_EXPIRES_IN` |          | `'7d'`                                   | `AuthModule`                                        |
 | `WEB_ORIGIN`     |          | `'http://localhost:3000'`                | CORS в `main.ts`                                    |
 
-## CQRS pattern
+## CQRS reference
 
-Reference implementation — [`apps/api/src/categories/`](src/categories) и [`apps/api/src/expenses/`](src/expenses). Все новые ресурсы строим по этой же схеме.
+Все ресурсы строим по единой CQRS-схеме. Reference-реализации — [`src/categories/`](src/categories) и [`src/expenses/`](src/expenses). Структура папки:
 
 ```
 <resource>/
-├── <resource>.controller.ts          # HTTP layer: @UseGuards(JwtAuthGuard), @CurrentUser()
-├── <resource>.service.ts             # thin: только dispatch через CommandBus/QueryBus + mapper
-├── <resource>.repository.ts          # единственное место, где живёт PrismaService
+├── <resource>.controller.ts          # HTTP layer
+├── <resource>.service.ts             # thin: CommandBus/QueryBus dispatch + mapper
+├── <resource>.repository.ts          # единственное место с PrismaService
 ├── <resource>.mapper.ts              # Prisma row → DTO из @expense-tracker/types
 ├── <resource>.module.ts              # imports: [CqrsModule], providers: [...handlers, service, repo]
-├── index.ts                          # экспорт команд/queries для cross-module access
+├── index.ts                          # public CQRS API для cross-module access
 ├── dto/                              # class-validator DTOs (HTTP boundary)
-├── commands/
-│   ├── <name>.command.ts             # plain class с конструктором-payload
-│   └── handlers/<name>.handler.ts    # @CommandHandler(...) — инжектит repository
-└── queries/
-    ├── <name>.query.ts
-    └── handlers/<name>.handler.ts    # @QueryHandler(...)
+├── commands/{<name>.command.ts, handlers/<name>.handler.ts}
+└── queries/{<name>.query.ts,  handlers/<name>.handler.ts}
 ```
 
-**Слои и правила:**
+Обязанности слоёв, что возвращают commands vs queries, как работает регистрация handlers — это правила ревью, см. [REVIEW.md §3.1](../../REVIEW.md).
 
-- **Controller** — только HTTP: декораторы, валидация (`@Body() dto: SomeDto`), извлечение пользователя через `@CurrentUser()`. Возвращает DTO из `@expense-tracker/types`, не Prisma-row.
-- **Service** — тонкая обёртка: формирует команду/query, диспатчит, маппит результат. Никакой бизнес-логики напрямую (она в handler'ах) и никакого Prisma. Если service превращается в толстый — что-то делаем не так.
-- **Repository** — единственный класс, инжектящий `PrismaService`. Все ownership-проверки (`{ where: { id, userId } }` или `{ where: { id, category: { userId } } }` для expenses) живут тут.
-- **Mapper** — чистая функция Prisma row → DTO. `Decimal.toString()`, `Date.toISOString()`, отбрасывание `passwordHash` и т.п. Для пагинированных ответов — отдельная функция-обёртка (`toPaginatedExpenses`), сами items маппятся в query handler.
-- **Commands** — мутации (create/update/delete). Возвращают Prisma row (или void для delete) — service потом мапит.
-- **Queries** — чтение. Read-side обычно возвращает Prisma row[]/null; для пагинации query handler уже маппит в DTO и возвращает `{ items, total }`.
+## Cross-module CQRS
 
-**Регистрация:** в `<resource>.module.ts` импортируется `CqrsModule`, все handlers перечисляются в `providers`. Без `CqrsModule` в imports — handlers не зарегистрируются.
+Public API ресурса выставляется через `src/<resource>/index.ts` (см. [`users/index.ts`](src/users/index.ts), [`categories/index.ts`](src/categories/index.ts), [`expenses/index.ts`](src/expenses/index.ts)) — наружу торчат только commands/queries, controller/service/repository/dto/handler остаются приватными.
 
-## Cross-module CQRS access
+Конкретный пример: `AuthService` дёргает users через `CreateUserCommand` / `GetUserByEmailQuery` / `GetUserByIdQuery` из [`users/index.ts`](src/users/index.ts). `UsersModule` намеренно без controller/service — users экспонируются только как CQRS-операции для `AuthModule`.
 
-Один модуль может дёргать команды/queries другого **только через CommandBus/QueryBus** — никакой прямой инъекции чужих репозиториев.
+Правила взаимодействия модулей через bus — см. [REVIEW.md §3.2](../../REVIEW.md).
 
-Пример: `AuthService` использует пользователей через `CreateUserCommand` / `GetUserByEmailQuery` / `GetUserByIdQuery`, импортируемые из [`users/index.ts`](src/users/index.ts). Сам `UsersRepository` остаётся приватным внутри `UsersModule`.
+## Auth & ownership — что есть в коде
 
-Каждый ресурс выставляет public CQRS API через `src/<resource>/index.ts` (см. [`users/index.ts`](src/users/index.ts), [`categories/index.ts`](src/categories/index.ts), [`expenses/index.ts`](src/expenses/index.ts)). DTO/handlers — приватные.
-
-`UsersModule` не имеет controller/service — это сознательно: users экспонируются наружу только как CQRS-операции, потребляемые `AuthModule`.
-
-## Auth & ownership
-
-- **JWT payload** — `{ sub, email }`. `sub` = `user.id`. Если будешь менять payload — это breaking change для всех клиентов (см. `feat(api)!` в корневом CLAUDE.md).
-- **JwtStrategy** при валидации тянет свежего пользователя из БД (через `GetUserByIdQuery`) и кладёт в `request.user` — без `passwordHash`, с `createdAt`/`updatedAt` уже в ISO.
-- **`@UseGuards(JwtAuthGuard)`** на контроллере + **`@CurrentUser() user: User`** в каждом методе — единственный способ получить пользователя в контроллере.
-- **Ownership scoping** — обязательно. Любая query/command, работающая с ресурсом, принимает `userId` и фильтрует по нему. Для Expense, у которой нет прямого `userId`, фильтруем через `category: { userId }`. См. `ExpensesRepository.assertCategoryOwnedByUser` — проверка владения категорией перед create/update.
+- **JWT payload** — `{ sub, email }`, `sub = user.id`. Менять payload — breaking change (см. правило про `feat(api)!` в корневом CLAUDE.md и [REVIEW.md §3.3](../../REVIEW.md)).
+- **`JwtStrategy.validate`** при валидации тянет свежего пользователя из БД через `GetUserByIdQuery` и кладёт в `request.user` — без `passwordHash`, с `createdAt`/`updatedAt` уже в ISO.
+- **`@UseGuards(JwtAuthGuard)` + `@CurrentUser() user: User`** — единственный способ получить пользователя в контроллере.
+- **Ownership scoping** — все repository-методы принимают `userId` и фильтруют по нему. У Expense нет прямого `userId` — фильтрация через `category: { userId }`. Перед create/update Expense — `ExpensesRepository.assertCategoryOwnedByUser` проверяет владение категорией.
 
 ## DTO & validation
 
-- Все входящие тела — классы с декораторами `class-validator` + `class-transformer`. `main.ts` ставит глобальный `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`:
-  - `whitelist` — режет неизвестные поля
-  - `forbidNonWhitelisted` — 400 при их наличии
-  - `transform` — приводит query-string числа к `number` (важно для `PaginationQueryDto`)
-- DTO **implements** соответствующий интерфейс из `@expense-tracker/types` — runtime-валидация остаётся в Nest, типы согласованы с фронтом. Пример: `CreateCategoryDto implements CreateCategoryInput`.
-- Trim строк делается на DTO через `@Transform` (см. `CreateCategoryDto.name`) — не в handler.
+`main.ts` ставит глобальный `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })`:
+
+- `whitelist` режет неизвестные поля
+- `forbidNonWhitelisted` — 400 при их наличии
+- `transform` приводит query-string числа к `number` (важно для `PaginationQueryDto`)
+
+DTO лежат в `<resource>/dto/`, валидация через `class-validator` + `class-transformer`, требования к ним — в [REVIEW.md §3.4](../../REVIEW.md).
 
 ## Pagination
 
-Постраничные list-эндпойнты используют [`PaginationQueryDto`](src/shared/dto/pagination-query.dto.ts) (`limit` 1..100 = 10, `offset` 0..100_000 = 0).
+Постраничные list-эндпойнты используют [`PaginationQueryDto`](src/shared/dto/pagination-query.dto.ts) (`limit` 1..100 = 10, `offset` 0..100_000 = 0). Маппер пагинированного ответа — `toPaginated*` в `<resource>.mapper.ts`, считает `hasMore = offset + items.length < total`.
 
-В Prisma `orderBy` **всегда** добавляй tie-breaker (`{ id: 'desc' }` или аналог), иначе одинаковые значения primary-сорта будут давать недетерминированный порядок и offset-пагинация будет пропускать/задваивать строки. Пример: `ExpensesRepository.findAllByUser` — `orderBy: [{ spentAt: 'desc' }, { id: 'desc' }]`.
-
-Меta-обёртка (`toPaginatedExpenses`) считает `hasMore = offset + items.length < total`. Маппинг row→DTO делается **в query handler**, не в service — service получает уже готовые DTO и оборачивает в meta.
+Правила (tie-breaker в `orderBy`, где маппится items, где собирается meta) — [REVIEW.md §3.5](../../REVIEW.md).
 
 ## Error handling
 
-- `Prisma.PrismaClientKnownRequestError` ловим точечно в command handlers и кидаем семантические Nest-исключения:
-  - `P2002` (unique constraint) → `ConflictException`
-  - `P2003` (FK violation) → `NotFoundException`
-  - `P2025` (record not found на update/delete) → `NotFoundException`
-- Read-side: если query вернула `null` — кидаем `NotFoundException` в service (а не в handler), чтобы handler оставался pure data layer.
-- Не глотай unknown ошибки — re-throw после специфичных кейсов.
+Обработка `Prisma.PrismaClientKnownRequestError` (мапинг `P2002`/`P2003`/`P2025` в Nest-исключения, поведение read-side для `null`) — правило ревью, см. [REVIEW.md §3.6](../../REVIEW.md). В коде смотри командные handlers `categories/` и `expenses/` как референс.
 
-## Prisma conventions
+## Prisma — фактическая конфигурация
 
-- Schema живёт в [`prisma/schema.prisma`](prisma/schema.prisma), миграции — в [`prisma/migrations/`](prisma/migrations). **Не выноси Prisma в `packages/db`** — backend единственный консьюмер.
-- `@db.Decimal(12, 2)` для денежных полей. На выходе мапим через `.toString()` (см. `toExpenseDto`) — JS-`number` потерял бы точность.
-- `onDelete: Restrict` на связях `Category.user` и `Expense.category` — нельзя удалить пользователя/категорию, у которых есть зависимые записи. Если меняешь — продумай каскад в product flow.
-- Composite uniques (`@@unique([userId, name])` у `Category`) — повод обработать `P2002` в соответствующем handler.
+- Schema живёт в [`prisma/schema.prisma`](prisma/schema.prisma), миграции — в [`prisma/migrations/`](prisma/migrations). Prisma специально не вынесена в `packages/db` — backend единственный консьюмер.
+- Денежные поля — `@db.Decimal(12, 2)`. На выходе мапим через `.toString()` (см. `toExpenseDto`).
+- `onDelete: Restrict` на связях `Category.user` и `Expense.category` — нельзя удалить пользователя/категорию с зависимыми записями.
+- Composite uniques: `@@unique([userId, name])` у `Category`.
+
+Правила работы с этим (когда трогать каскады, как обрабатывать composite unique conflicts) — [REVIEW.md §3.7](../../REVIEW.md).
 
 ## Adding a new resource — checklist
 
 1. Добавь модель в `schema.prisma`, сгенерируй миграцию: `pnpm --filter @expense-tracker/api prisma:migrate` (только когда пользователь попросил).
 2. Добавь shared DTO/типы в `packages/types` (см. правило **Shared types boundary** в корневом CLAUDE.md).
-3. Создай папку `src/<resource>/` по структуре из секции [CQRS pattern](#cqrs-pattern).
+3. Создай папку `src/<resource>/` по структуре из секции [CQRS reference](#cqrs-reference).
 4. Зарегистрируй `<Resource>Module` в `app.module.ts`.
 5. Если ресурс нужен другому модулю — экспортируй commands/queries через `src/<resource>/index.ts` (controller/service/repo остаются приватными).
-6. Проверь: `pnpm typecheck && pnpm lint`.
+6. Проверь: `pnpm typecheck && pnpm lint`. Перед открытием PR — пройдись по [REVIEW.md](../../REVIEW.md).

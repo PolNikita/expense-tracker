@@ -6,8 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Этот файл — repo-wide контракт. Детали по конкретным приложениям — в их workspace CLAUDE.md:
 
-- [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md) — Nest.js backend: CQRS-шаблон, ownership scoping, env vars, обработка Prisma-ошибок, чеклист нового ресурса.
-- [`apps/web/CLAUDE.md`](apps/web/CLAUDE.md) — Next.js frontend: FSD slice contracts, http-client + token bridge, guards/гидрация, fetching-паттерн, pagination, чеклист новой страницы.
+- [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md) — Nest.js backend: layout, env vars, CQRS-схема и архитектурные узлы, чеклист нового ресурса.
+- [`apps/web/CLAUDE.md`](apps/web/CLAUDE.md) — Next.js frontend: layout, env vars, FSD slice contracts, token bridge, fetching/pagination паттерны, чеклист новой страницы.
+
+Operational чеклист для PR-ревью — [`REVIEW.md`](REVIEW.md). Все правила вида «должно быть X / блокер» живут там, не в CLAUDE.md.
 
 ## Project status
 
