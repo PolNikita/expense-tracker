@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workspace-level guides
+
+Этот файл — repo-wide контракт. Детали по конкретным приложениям — в их workspace CLAUDE.md:
+
+- [`apps/api/CLAUDE.md`](apps/api/CLAUDE.md) — Nest.js backend: CQRS-шаблон, ownership scoping, env vars, обработка Prisma-ошибок, чеклист нового ресурса.
+- [`apps/web/CLAUDE.md`](apps/web/CLAUDE.md) — Next.js frontend: FSD slice contracts, http-client + token bridge, guards/гидрация, fetching-паттерн, pagination, чеклист новой страницы.
+
 ## Project status
 
 Full-stack monorepo with working auth and categories:
